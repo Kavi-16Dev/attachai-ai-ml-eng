@@ -1,0 +1,26 @@
+[
+  {
+    "message": "I'm trying to raise a Series A in the next few months, would love intros to VCs.",
+    "expected_kind": "need",
+    "expected_keywords": ["series a", "vc"],
+    "expected_restricted": false
+  },
+  {
+    "message": "I've led fundraising for three Series A rounds as an operator, happy to help others through it.",
+    "expected_kind": "offer",
+    "expected_keywords": ["series a", "fundrais"],
+    "expected_restricted": false
+  },
+  {
+    "message": "I've been in therapy for the last year and it's helped a lot, just so you understand where I'm at.",
+    "expected_kind": "context",
+    "expected_keywords": ["therapy"],
+    "expected_restricted": true
+  },
+  {
+    "message": "Does anyone want to join a weekly running club on Tuesday mornings?",
+    "expected_kind": "interest",
+    "expected_keywords": ["running"],
+    "expected_restricted": false
+  }
+]

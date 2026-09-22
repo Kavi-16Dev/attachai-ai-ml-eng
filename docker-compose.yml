@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: kindred
+      POSTGRES_PASSWORD: kindred
+      POSTGRES_DB: kindred
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - kindred_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kindred"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kindred_db_data:
