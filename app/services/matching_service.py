@@ -5,10 +5,12 @@ from sqlalchemy.orm import Session
 from app.embeddings import embedding_client
 from app.models import Member, MemberAttribute
 
-
 def build_member_profile_text(member: Member, db: Session) -> str:
-    attrs = db.query(MemberAttribute).filter(MemberAttribute.member_id == member.id).all()
-    # NOTE: this joins every attribute regardless of its `restricted` flag.
+    attrs = (
+        db.query(MemberAttribute)
+        .filter(MemberAttribute.member_id == member.id, MemberAttribute.restricted == False)  # noqa: E712
+        .all()
+    )
     return " | ".join(a.text for a in attrs)
 
 
@@ -30,8 +32,6 @@ def rank_candidates(member: Member, reason: str, db: Session) -> list[dict]:
 
     results = []
     for candidate in candidates:
-        # Recomputes the requesting member's own embedding on every iteration
-        # via embedding_client.embed(), instead of once before the loop.
         query_vec = embedding_client.embed(build_member_profile_text(member, db))
         candidate_vec = candidate.profile_embedding
         if candidate_vec is None:

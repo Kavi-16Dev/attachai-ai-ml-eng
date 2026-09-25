@@ -26,11 +26,13 @@ def query_knowledge(
     # itself below — the nearest-neighbour search runs across every club's
     # knowledge chunks.
     results = (
-        db.query(KnowledgeChunk)
-        .order_by(KnowledgeChunk.embedding.cosine_distance(query_vec))
-        .limit(5)
-        .all()
-    )
+            db.query(KnowledgeChunk)
+            .filter(KnowledgeChunk.club_id == club_id)
+            .order_by(KnowledgeChunk.embedding.cosine_distance(query_vec))
+            .limit(5)
+            .all()
+        )
+    
     return [
         {"chunk_id": r.id, "club_id": r.club_id, "title": r.title, "body": r.body}
         for r in results
