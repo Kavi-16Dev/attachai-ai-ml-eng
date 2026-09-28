@@ -83,3 +83,74 @@ nothing to commit, working tree clean
 d4e013f (HEAD -> main, origin/main, origin/HEAD) fix: authorize introductions, exclude restricted attributes, scope to caller's club
 aa9a48f fix: scope knowledge-chunk similarity search to caller's club Add club_id filter to the knowledge query and regression test for cross-tenant isolation
 4f4eefb Kindred Concierge — Round 3 assessment starter
+
+## Part 3 - Authorization traces (extraction endpoint)
+
+A member token cannot trigger extraction:
+
+PS> curl.exe -s -X POST "http://localhost:8000/clubs/riverside/extract-attributes" -H "X-Member-Token: riverside-member-1" -H "Content-Type: application/json" -d '{\"message_ids\": [1]}'
+{"detail":"admin role required"}
+
+An admin of a different club cannot trigger extraction:
+
+PS> curl.exe -s -X POST "http://localhost:8000/clubs/riverside/extract-attributes" -H "X-Member-Token: oakhurst-admin" -H "Content-Type: application/json" -d '{\"message_ids\": [1]}'
+{"detail":"admin of a different club"}
+
+## Part 3 - Batch run on seeded messages (idempotency)
+
+Messages 1-5 already have attributes from the seed script, so the pipeline skips them and makes no API call.
+
+PS> curl.exe -s -X POST "http://localhost:8000/clubs/riverside/extract-attributes" -H "X-Member-Token: riverside-admin" -H "Content-Type: application/json" -d '{\"message_ids\": [1,2,3,4,5]}'
+{"results":[{"message_id":1,"status":"already_processed","attributes_created":0},{"message_id":2,"status":"already_processed","attributes_created":0},{"message_id":3,"status":"already_processed","attributes_created":0},{"message_id":4,"status":"already_processed","attributes_created":0},{"message_id":5,"status":"already_processed","attributes_created":0}]}
+
+## Part 3 - Real API run: NOT COMPLETED (OpenAI quota exhausted)
+
+The OpenAI account had no credit remaining, so no real extraction succeeded. Output is shown unedited.
+
+PS> python -m eval.run_eval; echo "exit code: $LASTEXITCODE"
+[1] FAIL  error: gave up after 4 attempts: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+      message: "I'm trying to raise a Series A in the next few months, would love intros to VCs."
+[2] FAIL  error: gave up after 4 attempts: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+      message: "I've led fundraising for three Series A rounds as an operator, happy to help others through it."
+[3] FAIL  error: gave up after 4 attempts: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+      message: "I've been in therapy for the last year and it's helped a lot, just so you understand where I'm at."
+[4] FAIL  error: gave up after 4 attempts: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.', 'type': 'insufficient_quota', 'param': None, 'code': 'credit_balance_exhausted'}}
+      message: 'Does anyone want to join a weekly running club on Tuesday mornings?'
+
+Overall: 0/4 = 0.00  (threshold 0.75)
+BELOW THRESHOLD
+exit code: 1
+
+Note: this is an account billing failure, not a pipeline defect. The client retried the 429 insufficient_quota error 4 times before giving up, which is wasted effort because a zero balance does not recover on retry. Non-retrying insufficient_quota is a follow-up improvement.
+
+## Final test run
+
+PS> pytest -v
+collected 28 items
+
+tests/test_bookings.py::test_confirm_payment_succeeds PASSED
+tests/test_extraction.py::test_extraction_happy_path PASSED
+tests/test_extraction.py::test_extraction_is_idempotent PASSED
+tests/test_extraction.py::test_extraction_requires_admin PASSED
+tests/test_extraction.py::test_extraction_rejects_cross_club_admin PASSED
+tests/test_extraction.py::test_extraction_isolates_per_message_failure PASSED
+tests/test_extraction.py::test_restricted_attribute_is_stored_but_never_reaches_matching PASSED
+tests/test_introductions.py::test_generate_reason_includes_attributes PASSED
+tests/test_introductions.py::test_introduction_never_includes_restricted_attributes PASSED
+tests/test_introductions.py::test_introduction_rejects_member_from_another_club PASSED
+tests/test_introductions.py::test_introduction_rejects_member_who_is_not_a_party PASSED
+tests/test_introductions.py::test_admin_can_request_introduction_within_own_club PASSED
+tests/test_introductions.py::test_introduction_with_only_restricted_attributes_has_insufficient_basis PASSED
+tests/test_knowledge.py::test_query_own_club_returns_results PASSED
+tests/test_knowledge.py::test_query_never_returns_other_clubs_chunks PASSED
+tests/test_knowledge.py::test_query_rejects_non_member PASSED
+tests/test_matching.py::test_rank_candidates_returns_sorted_list PASSED
+tests/test_openai_client.py::test_retries_transient_errors_then_succeeds PASSED
+tests/test_openai_client.py::test_gives_up_after_budget_as_permanent PASSED
+tests/test_openai_client.py::test_permanent_error_is_not_retried PASSED
+tests/test_openai_client.py::test_parse_normalizes_and_clamps PASSED
+tests/test_openai_client.py::test_parse_rejects_invalid_output[...] (5 parametrized cases) PASSED
+tests/test_sessions.py::test_session_books_end_to_end PASSED
+tests/test_sessions.py::test_refund_dispute_escalates PASSED
+
+28 passed, 60 warnings in 3.64s
