@@ -19,3 +19,12 @@ def require_admin(member: Member = Depends(get_current_member)) -> Member:
     if member.role != "admin":
         raise HTTPException(status_code=403, detail="admin role required")
     return member
+
+
+def require_club_admin(club_id: str, admin: Member = Depends(require_admin)) -> Member:
+    """Admin of *this* club. require_admin alone only proves the caller is
+    an admin somewhere; without this scoping an admin of one club could act
+    on another club's data."""
+    if admin.club_id != club_id:
+        raise HTTPException(status_code=403, detail="admin of a different club")
+    return admin
