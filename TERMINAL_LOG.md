@@ -55,3 +55,31 @@ tests/test_knowledge.py::test_query_rejects_non_member PASSED                   
 tests/test_matching.py::test_rank_candidates_returns_sorted_list PASSED                                                                              [ 71%]
 tests/test_sessions.py::test_session_books_end_to_end PASSED                                                                                         [ 85%]
 tests/test_sessions.py::test_refund_dispute_escalates PASSED                                                                                         [100%]
+
+## Issue 2 — Introductions endpoint: trace before the fix
+
+A Riverside member asks about Riverside member 3 (who has a restricted attribute) and an Oakhurst member.
+
+PS> curl.exe -s "http://localhost:8000/introductions/5/9?reason=business" -H "X-Member-Token: riverside-member-1"
+
+{"reason_text":"Because manages anxiety, prefers quiet low-key venues and former hospitality business owner, now a consultant — a good business match."}
+
+The response contains a restricted health-related attribute, plus data from an Oakhurst member, in reply to a Riverside caller.
+
+## Issue 2 — Introductions endpoint: trace after the fix
+
+PS> curl.exe -s "http://localhost:8000/introductions/5/9?reason=business" -H "X-Member-Token: riverside-member-1"
+
+{"detail":"member not found"}
+
+## Git state after the fix
+
+(assess_venv) PS> git status
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+
+(assess_venv) PS> git log --oneline
+d4e013f (HEAD -> main, origin/main, origin/HEAD) fix: authorize introductions, exclude restricted attributes, scope to caller's club
+aa9a48f fix: scope knowledge-chunk similarity search to caller's club Add club_id filter to the knowledge query and regression test for cross-tenant isolation
+4f4eefb Kindred Concierge — Round 3 assessment starter
