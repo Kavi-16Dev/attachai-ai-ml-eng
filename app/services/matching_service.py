@@ -5,7 +5,14 @@ from sqlalchemy.orm import Session
 from app.embeddings import embedding_client
 from app.models import Member, MemberAttribute
 
+
 def build_member_profile_text(member: Member, db: Session) -> str:
+    # Restricted attributes (health, clinical, psychometric) are excluded
+    # here at the single point that both the live ranking endpoint and the
+    # stored profile_embedding (via embedding_pipeline.refresh_member_embedding)
+    # go through. Extraction writes restricted rows to the same
+    # member_attributes table matching reads from, so this filter — not a
+    # separate table — is the enforcement boundary between the two.
     attrs = (
         db.query(MemberAttribute)
         .filter(MemberAttribute.member_id == member.id, MemberAttribute.restricted == False)  # noqa: E712
@@ -32,6 +39,8 @@ def rank_candidates(member: Member, reason: str, db: Session) -> list[dict]:
 
     results = []
     for candidate in candidates:
+        # Recomputes the requesting member's own embedding on every iteration
+        # via embedding_client.embed(), instead of once before the loop.
         query_vec = embedding_client.embed(build_member_profile_text(member, db))
         candidate_vec = candidate.profile_embedding
         if candidate_vec is None:
